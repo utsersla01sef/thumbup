@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MediaPipe Thumb Detection</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.min.js"></script>
+</head>
+<body>
+  <video id="inputVideo" width="640" height="480" autoplay muted></video>
+  <canvas id="outputCanvas" width="640" height="480"></canvas>
+  <script>
+    const videoElement = document.getElementById('inputVideo');
+    const canvasElement = document.getElementById('outputCanvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    let hands;
+
+    const handsDetection = new Hands({
+      locateFile: (file) => {
+        // return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.8.4/dist/${file}`;
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.min.js`
+      }
+    });
+    handsDetection.setOptions({
+      maxNumHands: 1, // 只检测一个手
+      minDetectionConfidence: 0.5, // 最小置信度
+      minTrackingConfidence: 0.5 // 最小跟踪置信度
+    });
+    handsDetection.onResults(onHandResults);
+
+    function onHandResults(results) {
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(
+        results.image, 0, 0, canvasElement.width, canvasElement.height);
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const thumbTip = results.multiHandLandmarks[0][4];
+        const thumbBase = results.multiHandLandmarks[0][2];
+        const thumbLength = Math.sqrt(
+          Math.pow(thumbTip.x - thumbBase.x, 2) +
+          Math.pow(thumbTip.y - thumbBase.y, 2) +
+          Math.pow(thumbTip.z - thumbBase.z, 2)
+        );
+        const thumbIsUp = thumbTip.y < thumbBase.y;
+        console.log(`Thumb is up: ${thumbIsUp}, thumb length: ${thumbLength}`);
+      }
+    }
+
+    function onVideoReady() {
+      handsDetection.setInputVideo(videoElement);
+      handsDetection.start();
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((stream) => {
+        videoElement.srcObject = stream;
+        videoElement.onloadedmetadata = onVideoReady;
+      })
+      .catch((err) => {
+        console.error('Failed to get user media', err);
+      });
+  </script>
+</body>
+</html>
